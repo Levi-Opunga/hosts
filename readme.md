@@ -1,9 +1,9 @@
 # Hosts Editor
-
 A modern CLI tool to manage your `/etc/hosts` file with ease. It provides a web UI and CLI for managing hosts, with features like backup, validation, and Caddyfile generation.
 
 For detailed documentation, please see the [docs.md](docs.md) file.
 
+![screenshot](images/ui.png)
 ## Features
 
 - **Web UI:** A user-friendly web interface for managing hosts.
