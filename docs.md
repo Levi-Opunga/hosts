@@ -265,7 +265,7 @@ To build `hosts-cli` from source, you need to have Go installed.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/hosts-cli.git
+    git clone https://github.com/levi-opunga/hosts-cli.git
     cd hosts-cli
     ```
 

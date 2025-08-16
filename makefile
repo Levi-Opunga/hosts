@@ -11,4 +11,4 @@ install:
 	go build .;go install
 
 install-global:
-	go build .;sudo mv hosts-editor /usr/local/bin/hosts-cli
+	go build .;sudo mv hosts-cli /usr/local/bin/hosts-cli
