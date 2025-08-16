@@ -10,6 +10,17 @@ A modern CLI tool to manage `/etc/hosts` file with backup and validation.
 
 ## Usage
 
+### Permissions
+To run the CLI as a non-root user, you need to grant the `net_bind_service` capability to the binary. You can do this by running the following command:
+```shell
+ sudo setcap cap_net_bind_service=+ep $(which hosts-cli)
+```
+To check if you have the necessary permissions, run the following command:
+```shell
+sudo ./hosts-cli --check-privileges
+```
+
+
 ### Web UI
 
 Start without flags to launch web UI at http://localhost:3000
@@ -32,6 +43,8 @@ sudo ./hosts-ui --disable example.local               # Disable entry
 sudo ./hosts-ui --enable example.local                # Enable entry
 sudo ./hosts-ui --backup                              # Create backup
 sudo ./hosts-ui --restore backup-file.bak             # Restore backup
+sudo ./hosts-ui --port 3000                            # Change web server port
+
 ```
 
 ## CLI Usage
@@ -95,15 +108,6 @@ WEB INTERFACE:
 sudo ./hosts-cli --caddy api.local                  # Create Caddyfile for reverse proxying to api.local (default port 3000)
 sudo ./hosts-cli --caddy api.local --proxy  --port 5000  # Create Caddyfile for reverse proxying to api.local (port 5000) and run the caddy server
 sudo ./hosts-cli --proxy api.local --port 3000       # 
-```
-## Permissions
-To run the CLI as a non-root user, you need to grant the `net_bind_service` capability to the binary. You can do this by running the following command:
-```shell
- sudo setcap cap_net_bind_service=+ep $(which hosts-cli)
-```
-To check if you have the necessary permissions, run the following command:
-```shell
-sudo ./hosts-cli --check-privileges
 ```
 
 ## License
