@@ -9,3 +9,6 @@ clean:
 
 install:
 	go build .;go install
+
+install-global:
+	go build .;sudo mv hosts-cli /usr/local/bin/hosts-cli
