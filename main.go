@@ -1,9 +1,22 @@
-// Enhanced Hosts Editor – Modern web UI to view and edit /etc/hosts
-// Features: Search, filtering, validation, backup management, bulk operations
+// Enhanced Hosts Editor – Modern web UI and CLI to manage /etc/hosts
+// Features: Web UI, CLI operations, search, filtering, validation, backup management
+//
 // Build: go build -o hosts-ui
-// Run (Linux/macOS): sudo ./hosts-ui
-// Run (Windows as Administrator): ./hosts-ui.exe
-// Open: http://localhost:3000
+//
+// Web UI Usage:
+//   sudo ./hosts-ui                    (Linux/macOS)
+//   ./hosts-ui.exe                     (Windows as Administrator)
+//   Open: http://localhost:3000
+//
+// CLI Usage:
+//   sudo ./hosts-ui --add example.local                    # Add example.local -> 127.0.0.1
+//   sudo ./hosts-ui --add example.local --ip 192.168.1.10  # Add with custom IP
+//   sudo ./hosts-ui --remove example.local                 # Remove entry
+//   sudo ./hosts-ui --list                                 # List all entries
+//   sudo ./hosts-ui --disable example.local               # Disable entry
+//   sudo ./hosts-ui --enable example.local                # Enable entry
+//   sudo ./hosts-ui --backup                              # Create backup
+//   sudo ./hosts-ui --restore backup-file.bak             # Restore backup
 
 package main
 
@@ -13,6 +26,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -59,6 +73,21 @@ type BackupInfo struct {
 	Modified time.Time `json:"modified"`
 }
 
+// CLI flags
+var (
+	addFlag     = flag.String("add", "", "Add hostname (defaults to 127.0.0.1)")
+	removeFlag  = flag.String("remove", "", "Remove hostname")
+	ipFlag      = flag.String("ip", "127.0.0.1", "IP address for --add operation")
+	commentFlag = flag.String("comment", "", "Comment for --add operation")
+	listFlag    = flag.Bool("list", false, "List all entries")
+	disableFlag = flag.String("disable", "", "Disable hostname")
+	enableFlag  = flag.String("enable", "", "Enable hostname")
+	backupFlag  = flag.Bool("backup", false, "Create backup")
+	restoreFlag = flag.String("restore", "", "Restore from backup file")
+	portFlag    = flag.String("port", "3000", "Web server port")
+	helpFlag    = flag.Bool("help", false, "Show help")
+)
+
 var ipv4Regex = regexp.MustCompile(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`)
 var ipv6Regex = regexp.MustCompile(`^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$`)
 var hostnameRegex = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$`)
@@ -87,13 +116,11 @@ func isSystemEntry(ip string, hostnames []string) bool {
 	}
 
 	if systemEntries[ip] {
-		return true
-	}
-
-	for _, host := range hostnames {
-		if host == "localhost" || host == "localhost.localdomain" ||
-			strings.HasSuffix(host, ".localhost") {
-			return true
+		for _, host := range hostnames {
+			if host == "localhost" || host == "localhost.localdomain" ||
+				strings.HasSuffix(host, ".localhost") {
+				return true
+			}
 		}
 	}
 	return false
@@ -284,7 +311,12 @@ func getBackups() ([]BackupInfo, error) {
 }
 
 func restoreBackup(filename string) error {
-	backupPath := filepath.Join(backupDir(), filename)
+	var backupPath string
+	if filepath.IsAbs(filename) {
+		backupPath = filename
+	} else {
+		backupPath = filepath.Join(backupDir(), filename)
+	}
 	return copyFile(backupPath, hostsPath())
 }
 
@@ -356,7 +388,277 @@ func calculateStats(entries []Entry) Stats {
 	return stats
 }
 
-func main() {
+// CLI Functions
+func showUsage() {
+	fmt.Printf(`Hosts Editor Pro v2.0 - Advanced /etc/hosts management
+
+USAGE:
+    %s [flags]                           # Start web interface
+    %s --add <hostname> [flags]          # Add hostname entry
+    %s --remove <hostname>               # Remove hostname entry
+    %s --list                            # List all entries
+    %s --disable <hostname>              # Disable hostname entry
+    %s --enable <hostname>               # Enable hostname entry
+    %s --backup                          # Create backup
+    %s --restore <backup-file>           # Restore from backup
+
+FLAGS:
+    --add <hostname>     Add hostname (defaults to 127.0.0.1)
+    --ip <ip>           IP address for --add (default: 127.0.0.1)
+    --comment <text>    Comment for --add
+    --remove <hostname> Remove hostname
+    --list              List all entries
+    --disable <hostname> Disable hostname
+    --enable <hostname>  Enable hostname
+    --backup            Create backup
+    --restore <file>    Restore from backup
+    --port <port>       Web server port (default: 3000)
+    --help              Show this help
+
+EXAMPLES:
+    %s                                   # Start web interface
+    %s --add api.local                   # Add api.local -> 127.0.0.1
+    %s --add db.local --ip 192.168.1.10  # Add db.local -> 192.168.1.10
+    %s --add test.local --comment "Dev environment"
+    %s --remove api.local                # Remove api.local
+    %s --disable api.local               # Disable api.local
+    %s --enable api.local                # Enable api.local
+    %s --list                            # Show all entries
+    %s --backup                          # Create backup
+    %s --restore hosts.bak.20240101-120000  # Restore backup
+
+WEB INTERFACE:
+    Start without flags to launch web UI at http://localhost:3000
+    Requires elevated permissions (sudo/Administrator) for saving changes.
+
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0],
+		os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+}
+
+func cliAddEntry(hostname, ip, comment string) error {
+	entries, err := readHosts()
+	if err != nil {
+		return fmt.Errorf("failed to read hosts: %w", err)
+	}
+
+	// Validate IP
+	if !ipv4Regex.MatchString(ip) && !ipv6Regex.MatchString(ip) {
+		return fmt.Errorf("invalid IP address: %s", ip)
+	}
+
+	// Validate hostname
+	if !hostnameRegex.MatchString(hostname) && hostname != "localhost" {
+		return fmt.Errorf("invalid hostname: %s", hostname)
+	}
+
+	// Check if hostname already exists
+	for _, entry := range entries {
+		if !entry.IsComment {
+			for _, h := range entry.Hostnames {
+				if h == hostname {
+					return fmt.Errorf("hostname %s already exists with IP %s", hostname, entry.IP)
+				}
+			}
+		}
+	}
+
+	// Find next ID
+	maxID := 0
+	for _, e := range entries {
+		if e.ID > maxID {
+			maxID = e.ID
+		}
+	}
+
+	// Create new entry
+	newEntry := Entry{
+		ID:        maxID + 1,
+		IP:        ip,
+		Hostnames: []string{hostname},
+		Comment:   comment,
+		Disabled:  false,
+		IsComment: false,
+		IsSystem:  false,
+	}
+
+	entries = append(entries, newEntry)
+
+	if err := writeHosts(entries); err != nil {
+		return fmt.Errorf("failed to write hosts: %w", err)
+	}
+
+	fmt.Printf("✓ Added: %s -> %s", hostname, ip)
+	if comment != "" {
+		fmt.Printf(" (%s)", comment)
+	}
+	fmt.Println()
+	return nil
+}
+
+func cliRemoveEntry(hostname string) error {
+	entries, err := readHosts()
+	if err != nil {
+		return fmt.Errorf("failed to read hosts: %w", err)
+	}
+
+	found := false
+	for i := len(entries) - 1; i >= 0; i-- {
+		entry := entries[i]
+		if !entry.IsComment {
+			for j, h := range entry.Hostnames {
+				if h == hostname {
+					found = true
+					// Remove hostname from the entry
+					entry.Hostnames = append(entry.Hostnames[:j], entry.Hostnames[j+1:]...)
+
+					// If no hostnames left, remove the entire entry
+					if len(entry.Hostnames) == 0 {
+						entries = append(entries[:i], entries[i+1:]...)
+					} else {
+						entries[i] = entry
+					}
+					break
+				}
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("hostname %s not found", hostname)
+	}
+
+	if err := writeHosts(entries); err != nil {
+		return fmt.Errorf("failed to write hosts: %w", err)
+	}
+
+	fmt.Printf("✓ Removed: %s\n", hostname)
+	return nil
+}
+
+func cliListEntries() error {
+	entries, err := readHosts()
+	if err != nil {
+		return fmt.Errorf("failed to read hosts: %w", err)
+	}
+
+	stats := calculateStats(entries)
+
+	fmt.Printf("Hosts File: %s\n", hostsPath())
+	fmt.Printf("Total Entries: %d | Active: %d | Disabled: %d | Comments: %d\n\n",
+		stats.TotalEntries, stats.ActiveEntries, stats.DisabledEntries, stats.CommentLines)
+
+	activeFound := false
+	disabledFound := false
+
+	// Show active entries
+	for _, entry := range entries {
+		if !entry.IsComment && !entry.Disabled {
+			if !activeFound {
+				fmt.Println("🟢 ACTIVE ENTRIES:")
+				activeFound = true
+			}
+			status := "  "
+			if entry.IsSystem {
+				status = "🛡️"
+			}
+			fmt.Printf("%s %-15s -> %s", status, entry.IP, strings.Join(entry.Hostnames, " "))
+			if entry.Comment != "" {
+				fmt.Printf(" # %s", entry.Comment)
+			}
+			fmt.Println()
+		}
+	}
+
+	if activeFound {
+		fmt.Println()
+	}
+
+	// Show disabled entries
+	for _, entry := range entries {
+		if !entry.IsComment && entry.Disabled {
+			if !disabledFound {
+				fmt.Println("🔴 DISABLED ENTRIES:")
+				disabledFound = true
+			}
+			status := "  "
+			if entry.IsSystem {
+				status = "🛡️"
+			}
+			fmt.Printf("%s %-15s -> %s", status, entry.IP, strings.Join(entry.Hostnames, " "))
+			if entry.Comment != "" {
+				fmt.Printf(" # %s", entry.Comment)
+			}
+			fmt.Println()
+		}
+	}
+
+	return nil
+}
+
+func cliToggleEntry(hostname string, disable bool) error {
+	entries, err := readHosts()
+	if err != nil {
+		return fmt.Errorf("failed to read hosts: %w", err)
+	}
+
+	found := false
+	for i, entry := range entries {
+		if !entry.IsComment {
+			for _, h := range entry.Hostnames {
+				if h == hostname {
+					found = true
+					entries[i].Disabled = disable
+					break
+				}
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("hostname %s not found", hostname)
+	}
+
+	if err := writeHosts(entries); err != nil {
+		return fmt.Errorf("failed to write hosts: %w", err)
+	}
+
+	action := "Enabled"
+	if disable {
+		action = "Disabled"
+	}
+	fmt.Printf("✓ %s: %s\n", action, hostname)
+	return nil
+}
+
+func cliCreateBackup() error {
+	if err := createBackup(); err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+
+	// Get the latest backup to show the filename
+	backups, err := getBackups()
+	if err == nil && len(backups) > 0 {
+		fmt.Printf("✓ Backup created: %s\n", backups[0].Name)
+		fmt.Printf("  Location: %s\n", filepath.Join(backupDir(), backups[0].Name))
+	} else {
+		fmt.Println("✓ Backup created successfully")
+	}
+	return nil
+}
+
+func cliRestoreBackup(filename string) error {
+	if err := restoreBackup(filename); err != nil {
+		return fmt.Errorf("failed to restore backup: %w", err)
+	}
+
+	fmt.Printf("✓ Restored from backup: %s\n", filename)
+	return nil
+}
+
+func startWebServer() {
 	mux := http.NewServeMux()
 
 	// Serve static files
@@ -468,12 +770,85 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]any{"valid": true})
 	})
 
-	addr := ":3010"
-	fmt.Printf("🚀 Enhanced Hosts Editor v2.0\n")
-	fmt.Printf("📍 Listening on http://localhost%s\n", addr)
-	fmt.Printf("📁 Editing: %s\n", hostsPath())
+	addr := ":" + *portFlag
+	fmt.Printf("🚀 Enhanced Hosts Editor Pro v2.0\n")
+	fmt.Printf("📍 Web Interface: http://localhost%s\n", addr)
+	fmt.Printf("📁 Hosts File: %s\n", hostsPath())
 	fmt.Printf("💾 Backups: %s\n", backupDir())
+	fmt.Printf("⌨️  Use Ctrl+C to stop server\n\n")
+	fmt.Printf("💡 CLI Usage: %s --help\n", os.Args[0])
+
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		os.Exit(1)
 	}
+}
+
+func main() {
+	flag.Parse()
+
+	if *helpFlag {
+		showUsage()
+		return
+	}
+
+	// Handle CLI operations
+	if *addFlag != "" {
+		if err := cliAddEntry(*addFlag, *ipFlag, *commentFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *removeFlag != "" {
+		if err := cliRemoveEntry(*removeFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *listFlag {
+		if err := cliListEntries(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *disableFlag != "" {
+		if err := cliToggleEntry(*disableFlag, true); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *enableFlag != "" {
+		if err := cliToggleEntry(*enableFlag, false); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *backupFlag {
+		if err := cliCreateBackup(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *restoreFlag != "" {
+		if err := cliRestoreBackup(*restoreFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// No CLI flags provided, start web server
+	startWebServer()
 }
