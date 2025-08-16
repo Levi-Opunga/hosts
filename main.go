@@ -1,7 +1,7 @@
-// Enhanced Hosts Editor – Modern web UI and CLI to manage /etc/hosts
+// Enhanced Hosts CLI – Modern web UI and CLI to manage /etc/hosts and https proxying with Caddy
 // Features: Web UI, CLI operations, search, filtering, validation, backup management
 //
-// Build: go build -o hosts-ui
+// Build: go build -o hosts-cli
 //
 // Web UI Usage:
 //   sudo ./hosts-ui                    (Linux/macOS)
@@ -28,20 +28,30 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hosts-cli/caddystarter"
+	"hosts-cli/config"
 	"html/template"
 	"io"
+	"log"
+	"math/rand"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 //go:embed web/*
 var webFS embed.FS
+
+var version = "2.0"
 
 // Entry represents one logical line in hosts
 type Entry struct {
@@ -75,17 +85,22 @@ type BackupInfo struct {
 
 // CLI flags
 var (
-	addFlag     = flag.String("add", "", "Add hostname (defaults to 127.0.0.1)")
-	removeFlag  = flag.String("remove", "", "Remove hostname")
-	ipFlag      = flag.String("ip", "127.0.0.1", "IP address for --add operation")
-	commentFlag = flag.String("comment", "", "Comment for --add operation")
-	listFlag    = flag.Bool("list", false, "List all entries")
-	disableFlag = flag.String("disable", "", "Disable hostname")
-	enableFlag  = flag.String("enable", "", "Enable hostname")
-	backupFlag  = flag.Bool("backup", false, "Create backup")
-	restoreFlag = flag.String("restore", "", "Restore from backup file")
-	portFlag    = flag.String("port", "3000", "Web server port")
-	helpFlag    = flag.Bool("help", false, "Show help")
+	addFlag             = flag.String("add", "", "Add hostname (defaults to 127.0.0.1)")
+	removeFlag          = flag.String("remove", "", "Remove hostname")
+	ipFlag              = flag.String("ip", "127.0.0.1", "IP address for --add operation")
+	commentFlag         = flag.String("comment", "", "Comment for --add operation")
+	listFlag            = flag.Bool("list", false, "List all entries")
+	disableFlag         = flag.String("disable", "", "Disable hostname")
+	enableFlag          = flag.String("enable", "", "Enable hostname")
+	backupFlag          = flag.Bool("backup", false, "Create backup")
+	restoreFlag         = flag.String("restore", "", "Restore from backup file")
+	portFlag            = flag.String("port", "3000", "Web server port")
+	caddyFlag           = flag.Bool("caddy", false, "Create a Caddyfile for use in local Caddy server")
+	proxyFlag           = flag.String("proxy", "", "Local domain to proxy to (e.g. example.local)")
+	helpFlag            = flag.Bool("help", false, "Show help")
+	checkPrivilegesFlag = flag.Bool("check", false, "Check if you have the necessary privileges to run the program")
+	versionFlag         = flag.Bool("version", false, "Show version information")
+	initFlag            = flag.Bool("init", false, "Initialize the hosts file")
 )
 
 var ipv4Regex = regexp.MustCompile(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`)
@@ -103,8 +118,19 @@ func hostsPath() string {
 	return "/etc/hosts"
 }
 
+func executablePath() string {
+	path, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return path
+}
+
 func backupDir() string {
 	dir := filepath.Dir(hostsPath())
+	if config.GetConfig().Backup.Dir != "" {
+		return config.GetConfig().Backup.Dir
+	}
 	return filepath.Join(dir, "hosts_backups")
 }
 
@@ -264,6 +290,21 @@ func writeHosts(entries []Entry) error {
 	return nil
 }
 
+func hostExists(host string) bool {
+	entries, err := readHosts()
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		for _, h := range e.Hostnames {
+			if h == host {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func createBackup() error {
 	path := hostsPath()
 	dir := backupDir()
@@ -401,6 +442,8 @@ USAGE:
     %s --enable <hostname>               # Enable hostname entry
     %s --backup                          # Create backup
     %s --restore <backup-file>           # Restore from backup
+    %s --caddy <hostname> [flags]        # Create Caddyfile for Caddy server
+	%s --proxy <domain>  [flags]         # Local domain to proxy to (e.g. example.local)
 
 FLAGS:
     --add <hostname>     Add hostname (defaults to 127.0.0.1)
@@ -414,6 +457,14 @@ FLAGS:
     --restore <file>    Restore from backup
     --port <port>       Web server port (default: 3000)
     --help              Show this help
+    --caddy <hostname>  Create Caddyfile for Caddy server
+	--proxy <domain>    Local domain to proxy to (e.g. example.local)
+    --port <port>       Local port to bind to proxy server (default: 3000)
+
+Caddyfile Usage:
+    %s --caddy api.local                  # Create Caddyfile for reverse proxying to api.local (default port 3000)
+    %s --caddy api.local --proxy  --port 5000  # Create Caddyfile for reverse proxying to api.local (port 5000) and run the caddy server
+    %s --proxy api.local --port 3000       # 
 
 EXAMPLES:
     %s                                   # Start web interface
@@ -432,10 +483,41 @@ WEB INTERFACE:
     Requires elevated permissions (sudo/Administrator) for saving changes.
 
 `, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0],
-		os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
 
+func checkRootPrivileges() bool {
+	if runtime.GOOS == "windows" {
+		return true
+	}
+	currentUser, err := user.Current()
+	if err != nil {
+		return false
+	}
+	if currentUser.Uid != "0" {
+		return false
+	}
+	return true
+}
 func cliAddEntry(hostname, ip, comment string) error {
+	if !checkRootPrivileges() {
+		fmt.Println("You need to escalate privileges to add a new entry.")
+		// prompt user to escalate privileges
+		var escalatePrivileges = yesNoPrompt("Do you want to escalate privileges now? (y/n)")
+		if escalatePrivileges {
+			cmd := exec.Command("sudo", os.Args[0], "--add", hostname, "--ip", ip, "--comment", comment)
+			err := cmd.Run()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			return nil
+		} else {
+			fmt.Println("Exiting...")
+			os.Exit(1)
+		}
+
+	}
 	entries, err := readHosts()
 	if err != nil {
 		return fmt.Errorf("failed to read hosts: %w", err)
@@ -658,6 +740,23 @@ func cliRestoreBackup(filename string) error {
 	return nil
 }
 
+func yesNoPrompt(prompt string) bool {
+	var response string
+	fmt.Print(prompt)
+
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+		return false
+	}
+
+	response = strings.ToLower(response)
+	if response == "y" || response == "yes" {
+		return true
+	}
+	return false
+}
+
 func startWebServer() {
 	mux := http.NewServeMux()
 
@@ -770,13 +869,31 @@ func startWebServer() {
 		_ = json.NewEncoder(w).Encode(map[string]any{"valid": true})
 	})
 
-	addr := ":" + *portFlag
+	port, err := strconv.Atoi(*portFlag)
+	if err != nil || port < 1 || port > 65535 {
+		fmt.Fprintf(os.Stderr, "Error: invalid port: %v\n", err)
+
+	}
+	var addr string
+	if isPortIsInUse(port) {
+		fmt.Printf("Port %d is already in use.Selecting a random port...\n", port)
+		port = getRandomUnusedPort()
+		addr = ":" + strconv.Itoa(port)
+	} else {
+		addr = ":" + *portFlag
+	}
 	fmt.Printf("🚀 Enhanced Hosts Editor Pro v2.0\n")
 	fmt.Printf("📍 Web Interface: http://localhost%s\n", addr)
 	fmt.Printf("📁 Hosts File: %s\n", hostsPath())
 	fmt.Printf("💾 Backups: %s\n", backupDir())
 	fmt.Printf("⌨️  Use Ctrl+C to stop server\n\n")
 	fmt.Printf("💡 CLI Usage: %s --help\n", os.Args[0])
+	if !checkRootPrivileges() {
+		// red color
+		fmt.Printf("\033[31m")
+		fmt.Println("📢❗🚨 You are not running the web ui as root.\n📢❗🚨 You will not be able to save changes to the hosts file.")
+		fmt.Printf("\033[0m")
+	}
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
@@ -784,11 +901,165 @@ func startWebServer() {
 	}
 }
 
+func isPortIsInUse(port int) bool {
+	ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	if err != nil {
+		return true
+	}
+	defer func() {
+		_ = ln.Close()
+	}()
+	return false
+}
+func getRandomUnusedPort() int {
+	for {
+		port := rand.Intn(10000) + 10000
+		if !isPortIsInUse(port) {
+			return port
+		}
+	}
+}
+
+func ensureProxyHostExists() {
+	if *proxyFlag == "" {
+		fmt.Fprintf(os.Stderr, "Error: proxy flag is required\n")
+		os.Exit(1)
+	}
+
+	if !checkNetworkPrivileges() {
+		err := addNetworkPrivileges()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if !hostExists(*proxyFlag) {
+		fmt.Fprintf(os.Stderr, "Error: host %s does not exist\n", *proxyFlag)
+		// prompt user to add host
+
+		var addHost = yesNoPrompt("Do you want to add the host now? (y/n)")
+		if addHost {
+			if err := cliAddEntry(*proxyFlag, "127.0.0.1", ""); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			log.Println("Host does not exist. Exiting...")
+			os.Exit(1)
+		}
+
+	}
+}
+
+func checkNetworkPrivileges() bool {
+	cmd := exec.Command("getcap", executablePath())
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error checking privileges:", err)
+		return false
+	}
+
+	if !strings.Contains(string(output), "cap_net_bind_service") {
+		fmt.Println("You need to add the following capability to the binary: cap_net_bind_service")
+		fmt.Printf("To do this, run the following command:\n\nsudo setcap cap_net_bind_service=+ep $(which %s)\n\n", os.Args[0])
+		return false
+	}
+	return true
+}
+
+func addNetworkPrivileges() error {
+	yesNoPrompt("Do you want to add the necessary capability to the binary? (y/n)")
+	formatedCommand := fmt.Sprintf("sudo setcap cap_net_bind_service=+ep %s", executablePath())
+	fmt.Printf("Running command: %s\n", formatedCommand)
+	cmd := exec.Command("sudo", "setcap", "cap_net_bind_service=+ep", executablePath())
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to add capability: %w", err)
+	}
+	// start the program again
+	restartProgram()
+
+	return nil
+}
+
+func restartProgram() {
+	// restart the program
+	//clear the terminal
+	cmd := exec.Command("clear")
+	_, _ = cmd.Output()
+	fmt.Println("Restarting program...")
+	os.Args = append([]string{os.Args[0]}, os.Args[1:]...)
+	os.StartProcess(executablePath(), os.Args, &os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		Env:   os.Environ(),
+	})
+	os.Exit(0)
+}
+
+func cliInit() error {
+	if !checkNetworkPrivileges() {
+		err := addNetworkPrivileges()
+		if err != nil {
+			return err
+		}
+	}
+	err := config.InitConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	flag.Parse()
 
+	if *checkPrivilegesFlag {
+		checkNetworkPrivileges()
+		return
+	}
+	if *versionFlag {
+		fmt.Printf("Hosts CLI v%s\n", version)
+		return
+	}
+	if *initFlag {
+		if err := cliInit(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if *helpFlag {
 		showUsage()
+		return
+	}
+	if *caddyFlag {
+		ensureProxyHostExists()
+		if *portFlag == "" {
+			*portFlag = "3000"
+		}
+		port, err := strconv.Atoi(*portFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid port: %v\n", err)
+			os.Exit(1)
+		}
+		log.Printf("🚀 Caddy is running. for %s -> 127.0.0.1:%d (TLS=%v)", *proxyFlag, port, true)
+		caddystarter.RunCaddyUntilSignal(*proxyFlag, port, true)
+		return
+	}
+	if *proxyFlag != "" {
+		ensureProxyHostExists()
+		if *portFlag == "" {
+			*portFlag = "3000"
+		}
+		port, err := strconv.Atoi(*portFlag)
+		if err != nil || port < 1 || port > 65535 {
+			fmt.Fprintf(os.Stderr, "Error: invalid port: %v\n", err)
+			os.Exit(1)
+		}
+		log.Printf("🚀 Caddy is running. for %s -> 127.0.0.1:%d (TLS=%v)", *proxyFlag, port, true)
+		caddystarter.RunCaddyUntilSignal(*proxyFlag, port, true)
 		return
 	}
 
@@ -851,4 +1122,5 @@ func main() {
 
 	// No CLI flags provided, start web server
 	startWebServer()
+
 }

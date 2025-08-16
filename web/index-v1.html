@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hosts CLI</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a2e;
+      --bg-tertiary: #16213e;
+      --accent: #0f3460;
+      --accent-bright: #e94560;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --border: #2a2a3a;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --danger: #f44336;
+      --shadow: rgba(0, 0, 0, 0.3);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: var(--bg-tertiary);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px var(--shadow);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(135deg, var(--accent-bright), #ff6b9d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .header-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .info-card {
+      background: var(--bg-secondary);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 300px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 12px 45px 12px 15px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 25px;
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent-bright);
+      box-shadow: 0 0 20px rgba(233, 69, 96, 0.3);
+    }
+
+    .search-box i {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-bright), #ff6b9d);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--accent);
+      border-color: var(--accent-bright);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-tertiary);
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      background: linear-gradient(135deg, var(--accent-bright), #ff6b9d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+
+    .entries-container {
+      background: var(--bg-tertiary);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 8px 32px var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .entry {
+      background: var(--bg-secondary);
+      margin-bottom: 15px;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .entry:hover {
+      border-color: var(--accent-bright);
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.2);
+    }
+
+    .entry.disabled {
+      opacity: 0.6;
+      border-left: 4px solid var(--warning);
+    }
+
+    .entry.system {
+      border-left: 4px solid var(--success);
+    }
+
+    .entry.comment {
+      background: var(--bg-primary);
+      border-left: 4px solid var(--text-secondary);
+    }
+
+    .entry-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .entry-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .entry-fields {
+      display: grid;
+      grid-template-columns: 200px 1fr auto;
+      gap: 15px;
+      align-items: start;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .field input, .field textarea {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    .field input:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--accent-bright);
+    }
+
+    .hostnames-input {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .entry-comment {
+      grid-column: 1 / -1;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border);
+      transition: 0.4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-bright);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .filter-tab {
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    .filter-tab.active, .filter-tab:hover {
+      background: var(--accent-bright);
+      border-color: var(--accent-bright);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: var(--bg-tertiary);
+      margin: 50px auto;
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 600px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .close {
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .close:hover {
+      color: var(--accent-bright);
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 10px;
+      color: white;
+      z-index: 1001;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+    }
+
+    .notification.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .notification.success { background: var(--success); }
+    .notification.error { background: var(--danger); }
+    .notification.warning { background: var(--warning); }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--accent-bright);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .backup-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    .backup-info {
+      flex: 1;
+    }
+
+    .backup-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .backup-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .entry-fields {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+    }
+
+    .ip-valid { border-color: var(--success) !important; }
+    .ip-invalid { border-color: var(--danger) !important; }
+
+    .hostname-tag {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 15px;
+      font-size: 12px;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="fas fa-network-wired"></i> Hosts CLI</h1>
+    <p>Advanced /etc/hosts file management with backup and validation</p>
+    <div class="header-info">
+      <div class="info-card">
+        <strong><i class="fas fa-file"></i> File Path:</strong>
+        <br>{{.Path}}
+      </div>
+      <div class="info-card">
+        <strong><i class="fas fa-desktop"></i> System:</strong>
+        <br>{{.OS}} - Version {{.Version}}
+      </div>
+      <div class="info-card" id="lastModified">
+        <strong><i class="fas fa-clock"></i> Last Modified:</strong>
+        <br><span id="modifiedTime">Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="statsContainer">
+    <div class="stat-card">
+      <div class="stat-number" id="totalEntries">0</div>
+      <div class="stat-label">Total Entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="activeEntries">0</div>
+      <div class="stat-label">Active Entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="disabledEntries">0</div>
+      <div class="stat-label">Disabled Entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="commentLines">0</div>
+      <div class="stat-label">Comment Lines</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search entries by IP, hostname, or comment...">
+      <i class="fas fa-search"></i>
+    </div>
+    <button class="btn btn-primary" onclick="addEntry()">
+      <i class="fas fa-plus"></i> Add Entry
+    </button>
+    <button class="btn btn-secondary" onclick="showBackups()">
+      <i class="fas fa-history"></i> Backups
+    </button>
+    <button class="btn btn-success" onclick="saveHosts()">
+      <i class="fas fa-save"></i> Save Changes
+    </button>
+    <button class="btn btn-secondary" onclick="reloadHosts()">
+      <i class="fas fa-sync"></i> Reload
+    </button>
+  </div>
+
+  <div class="filter-tabs">
+    <div class="filter-tab active" data-filter="all">All</div>
+    <div class="filter-tab" data-filter="active">Active</div>
+    <div class="filter-tab" data-filter="disabled">Disabled</div>
+    <div class="filter-tab" data-filter="system">System</div>
+    <div class="filter-tab" data-filter="comments">Comments</div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+
+  <div class="entries-container">
+    <div id="entriesContainer">
+      <!-- Entries will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<!-- Add Entry Modal -->
+<div id="addModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2><i class="fas fa-plus"></i> Add New Entry</h2>
+      <span class="close" onclick="closeModal('addModal')">&times;</span>
+    </div>
+    <div class="entry-fields">
+      <div class="field">
+        <label>IP Address</label>
+        <input type="text" id="newIP" placeholder="192.168.1.1 or ::1">
+      </div>
+      <div class="field">
+        <label>Hostnames</label>
+        <textarea id="newHostnames" placeholder="example.com www.example.com" class="hostnames-input"></textarea>
+      </div>
+      <div class="field">
+        <label>Comment</label>
+        <input type="text" id="newComment" placeholder="Optional comment">
+      </div>
+    </div>
+    <div style="margin-top: 20px; text-align: right;">
+      <button class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddEntry()">Add Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backups Modal -->
+<div id="backupsModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2><i class="fas fa-history"></i> Backup Management</h2>
+      <span class="close" onclick="closeModal('backupsModal')">&times;</span>
+    </div>
+    <div id="backupsList">
+      <!-- Backups will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<div id="notification" class="notification"></div>
+
+<script>
+  let entries = [];
+  let currentFilter = 'all';
+  let searchTerm = '';
+
+  // Initialize the application
+  document.addEventListener('DOMContentLoaded', function() {
+    loadHosts();
+    setupEventListeners();
+  });
+
+  function setupEventListeners() {
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+      searchTerm = this.value.toLowerCase();
+      renderEntries();
+    });
+
+    // Filter tabs
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentFilter = this.getAttribute('data-filter');
+        renderEntries();
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 's') {
+          e.preventDefault();
+          saveHosts();
+        } else if (e.key === 'n') {
+          e.preventDefault();
+          addEntry();
+        } else if (e.key === 'r') {
+          e.preventDefault();
+          reloadHosts();
+        }
+      }
+    });
+  }
+
+  async function loadHosts() {
+    showLoading(true);
+    try {
+      const response = await fetch('/api/hosts');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      entries = data.entries || [];
+      updateStats(data.stats);
+      renderEntries();
+
+      showNotification('Hosts file loaded successfully', 'success');
+    } catch (error) {
+      showNotification(`Failed to load hosts: ${error.message}`, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function updateStats(stats) {
+    if (!stats) return;
+
+    document.getElementById('totalEntries').textContent = stats.totalEntries || 0;
+    document.getElementById('activeEntries').textContent = stats.activeEntries || 0;
+    document.getElementById('disabledEntries').textContent = stats.disabledEntries || 0;
+    document.getElementById('commentLines').textContent = stats.commentLines || 0;
+  }
+
+  function renderEntries() {
+    const container = document.getElementById('entriesContainer');
+    const filteredEntries = entries.filter(entry => {
+      // Apply search filter
+      if (searchTerm) {
+        const searchFields = [
+          entry.ip || '',
+          (entry.hostnames || []).join(' '),
+          entry.comment || '',
+          entry.raw || ''
+        ].join(' ').toLowerCase();
+
+        if (!searchFields.includes(searchTerm)) {
+          return false;
+        }
+      }
+
+      // Apply category filter
+      switch (currentFilter) {
+        case 'active':
+          return !entry.isComment && !entry.disabled;
+        case 'disabled':
+          return !entry.isComment && entry.disabled;
+        case 'system':
+          return !entry.isComment && entry.isSystem;
+        case 'comments':
+          return entry.isComment;
+        default:
+          return true;
+      }
+    });
+
+    container.innerHTML = filteredEntries.map(entry => createEntryHTML(entry)).join('');
+  }
+
+  function createEntryHTML(entry) {
+    if (entry.isComment) {
+      return `
+                    <div class="entry comment">
+                        <div style="font-family: monospace; white-space: pre-wrap;">${escapeHtml(entry.raw || '')}</div>
+                        <div class="entry-actions" style="position: absolute; top: 10px; right: 10px;">
+                            <button class="btn btn-danger" onclick="deleteEntry(${entry.id})" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+    }
+
+    const hostnamesTags = (entry.hostnames || []).map(h =>
+            `<span class="hostname-tag">${escapeHtml(h)}</span>`
+    ).join('');
+
+    const entryClasses = ['entry'];
+    if (entry.disabled) entryClasses.push('disabled');
+    if (entry.isSystem) entryClasses.push('system');
+
+    return `
+                <div class="${entryClasses.join(' ')}">
+                    <div class="entry-actions" style="position: absolute; top: 15px; right: 15px;">
+                        <label class="toggle-switch" title="Enable/Disable">
+                            <input type="checkbox" ${entry.disabled ? '' : 'checked'}
+                                   onchange="toggleEntry(${entry.id}, this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                        <button class="btn btn-danger" onclick="deleteEntry(${entry.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="entry-fields">
+                        <div class="field">
+                            <label>IP Address ${entry.isSystem ? '<i class="fas fa-shield-alt" title="System Entry"></i>' : ''}</label>
+                            <input type="text" value="${escapeHtml(entry.ip || '')}"
+                                   onchange="updateEntry(${entry.id}, 'ip', this.value)"
+                                   onblur="validateIP(this)">
+                        </div>
+                        <div class="field">
+                            <label>Hostnames</label>
+                            <textarea class="hostnames-input"
+                                      onchange="updateEntry(${entry.id}, 'hostnames', this.value)"
+                                      placeholder="Enter hostnames separated by spaces">${(entry.hostnames || []).join(' ')}</textarea>
+                            <div style="margin-top: 5px;">${hostnamesTags}</div>
+                        </div>
+                        <div class="field entry-comment">
+                            <label>Comment</label>
+                            <input type="text" value="${escapeHtml(entry.comment || '')}"
+                                   onchange="updateEntry(${entry.id}, 'comment', this.value)"
+                                   placeholder="Optional comment">
+                        </div>
+                    </div>
+                </div>
+            `;
+  }
+
+  function validateIP(input) {
+    const ip = input.value.trim();
+    const ipv4Regex = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+
+    if (ip && !ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
+      input.classList.add('ip-invalid');
+      input.classList.remove('ip-valid');
+      showNotification('Invalid IP address format', 'warning');
+    } else if (ip) {
+      input.classList.add('ip-valid');
+      input.classList.remove('ip-invalid');
+    } else {
+      input.classList.remove('ip-valid', 'ip-invalid');
+    }
+  }
+
+  function updateEntry(id, field, value) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+
+    if (field === 'hostnames') {
+      entry.hostnames = value.trim().split(/\s+/).filter(h => h.length > 0);
+    } else {
+      entry[field] = value;
+    }
+
+    // Re-render to update hostname tags
+    if (field === 'hostnames') {
+      renderEntries();
+    }
+  }
+
+  function toggleEntry(id, enabled) {
+    const entry = entries.find(e => e.id === id);
+    if (entry) {
+      entry.disabled = !enabled;
+      renderEntries();
+    }
+  }
+
+  function deleteEntry(id) {
+    if (confirm('Are you sure you want to delete this entry?')) {
+      entries = entries.filter(e => e.id !== id);
+      renderEntries();
+      updateStatsFromEntries();
+    }
+  }
+
+  function addEntry() {
+    document.getElementById('newIP').value = '';
+    document.getElementById('newHostnames').value = '';
+    document.getElementById('newComment').value = '';
+    document.getElementById('addModal').style.display = 'block';
+  }
+
+  function confirmAddEntry() {
+    const ip = document.getElementById('newIP').value.trim();
+    const hostnames = document.getElementById('newHostnames').value.trim();
+    const comment = document.getElementById('newComment').value.trim();
+
+    if (!ip) {
+      showNotification('IP address is required', 'error');
+      return;
+    }
+
+    const newId = Math.max(...entries.map(e => e.id), 0) + 1;
+    const newEntry = {
+      id: newId,
+      ip: ip,
+      hostnames: hostnames.split(/\s+/).filter(h => h.length > 0),
+      comment: comment,
+      disabled: false,
+      isComment: false,
+      isSystem: false
+    };
+
+    entries.push(newEntry);
+    renderEntries();
+    updateStatsFromEntries();
+    closeModal('addModal');
+    showNotification('Entry added successfully', 'success');
+  }
+
+  async function saveHosts() {
+    showLoading(true);
+    try {
+      const response = await fetch('/api/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ entries: entries })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      showNotification('Hosts file saved successfully!', 'success');
+    } catch (error) {
+      showNotification(`Failed to save: ${error.message}`, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function reloadHosts() {
+    if (confirm('Reload hosts file? Any unsaved changes will be lost.')) {
+      loadHosts();
+    }
+  }
+
+  async function showBackups() {
+    try {
+      const response = await fetch('/api/backups');
+      if (!response.ok) throw new Error('Failed to load backups');
+
+      const backups = await response.json();
+      const backupsList = document.getElementById('backupsList');
+
+      if (backups.length === 0) {
+        backupsList.innerHTML = '<p>No backups found.</p>';
+      } else {
+        backupsList.innerHTML = backups.map(backup => `
+                        <div class="backup-item">
+                            <div class="backup-info">
+                                <div class="backup-name">${backup.name}</div>
+                                <div class="backup-meta">
+                                    ${formatDate(backup.modified)} • ${formatBytes(backup.size)}
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="restoreBackup('${backup.name}')">
+                                <i class="fas fa-undo"></i> Restore
+                            </button>
+                        </div>
+                    `).join('');
+      }
+
+      document.getElementById('backupsModal').style.display = 'block';
+    } catch (error) {
+      showNotification(`Failed to load backups: ${error.message}`, 'error');
+    }
+  }
+
+  async function restoreBackup(filename) {
+    if (!confirm(`Restore backup "${filename}"? This will overwrite the current hosts file.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/restore?file=${encodeURIComponent(filename)}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) throw new Error('Failed to restore backup');
+
+      showNotification('Backup restored successfully!', 'success');
+      closeModal('backupsModal');
+      loadHosts();
+    } catch (error) {
+      showNotification(`Failed to restore backup: ${error.message}`, 'error');
+    }
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.classList.add('show');
+
+    setTimeout(() => {
+      notification.classList.remove('show');
+    }, 4000);
+  }
+
+  function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+  }
+
+  function updateStatsFromEntries() {
+    const stats = {
+      totalEntries: 0,
+      activeEntries: 0,
+      disabledEntries: 0,
+      commentLines: 0
+    };
+
+    entries.forEach(entry => {
+      if (entry.isComment) {
+        stats.commentLines++;
+      } else {
+        stats.totalEntries++;
+        if (entry.disabled) {
+          stats.disabledEntries++;
+        } else {
+          stats.activeEntries++;
+        }
+      }
+    });
+
+    updateStats(stats);
+  }
+
+  function formatDate(dateString) {
+    return new Date(dateString).toLocaleString();
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Close modals when clicking outside
+  window.addEventListener('click', function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+</script>
+</body>
+</html>
