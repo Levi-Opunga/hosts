@@ -6,3 +6,6 @@ run:
 
 clean:
 	rm -f hosts-cli
+
+install:
+	go build .;go install
