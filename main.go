@@ -1,9 +1,9 @@
 package main
 
 import (
-	"hosts-cli/cli"
-	"hosts-cli/core"
-	"hosts-cli/server"
+	"hosts/cli"
+	"hosts/core"
+	"hosts/server"
 	"os"
 )
 

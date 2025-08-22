@@ -15,30 +15,30 @@ For detailed documentation, please see the [docs.md](docs.md) file.
 
 ## Installation
 
-1.  **Download the latest release** from the [releases page](https://github.com/your-username/hosts-cli/releases).
+1.  **Download the latest release** from the [releases page](https://github.com/your-username/hosts/releases).
 2.  **Place the executable in a directory in your PATH.**
 
 Alternatively, you can build from source:
 
 1.  **Clone the repository:**
     ```shell
-    git clone https://github.com/your-username/hosts-cli.git
-    cd hosts-cli
+    git clone https://github.com/your-username/hosts.git
+    cd hosts
     ```
 
 2.  **Build the binary:**
     ```shell
-    go build -o hosts-cli
+    go build -o hosts
     ```
 
 ## Usage
 
 ### Web UI
 
-Start the web UI by running the `hosts-cli` command without any flags.
+Start the web UI by running the `hosts` command without any flags.
 
 ```shell
-./hosts-cli
+./hosts
 ```
 
 The web UI will be available at `http://localhost:3000`.
@@ -52,19 +52,19 @@ The CLI provides a comprehensive set of commands for managing your hosts file.
 **Add a host:**
 
 ```shell
-./hosts-cli --add example.local
+./hosts --add example.local
 ```
 
 **Remove a host:**
 
 ```shell
-./hosts-cli --remove example.local
+./hosts --remove example.local
 ```
 
 **List all hosts:**
 
 ```shell
-./hosts-cli --list
+./hosts --list
 ```
 
 For more commands and options, see the [documentation](docs.md).

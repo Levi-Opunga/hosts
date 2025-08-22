@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"hosts-cli/caddystarter"
-	"hosts-cli/core"
-	"hosts-cli/data"
-	"hosts-cli/domains"
+	"hosts/caddystarter"
+	"hosts/core"
+	"hosts/data"
+	"hosts/domains"
 	"log"
 	"os"
 	"regexp"
@@ -85,7 +85,7 @@ func (r Runner) newRootCmd() *cobra.Command {
 	var port int
 
 	cmd := &cobra.Command{
-		Use:   "hosts-cli",
+		Use:   "hosts",
 		Short: "Hosts Editor Pro - Advanced /etc/hosts management",
 		Long: fmt.Sprintf(`Hosts CLI  v%s - Advanced /etc/hosts management
 

@@ -1,14 +1,14 @@
 build:
-	go build -o hosts-cli
+	go build -o hosts
 
 run:
-	./hosts-cli
+	./hosts
 
 clean:
-	rm -f hosts-cli
+	rm -f hosts
 
 install:
 	go build .;go install
 
 install-global:
-	go build .;sudo mv hosts-cli /usr/local/bin/hosts-cli
+	go build .;sudo mv hosts /usr/local/bin/hosts

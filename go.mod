@@ -1,4 +1,4 @@
-module hosts-cli
+module hosts
 
 go 1.24
 

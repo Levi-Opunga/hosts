@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hosts-cli/config"
+	"hosts/config"
 	"io/ioutil"
 	"log"
 	"os"
@@ -209,7 +209,7 @@ caddy.json
 - caddy.json   - Main generated configuration (auto-generated)
 
 ## Usage
-Use hosts-cli domains commands to manage configurations.
+Use hosts domains commands to manage configurations.
 The main caddy.json file is automatically generated from domain configs.
 
 ## Starting Caddy
@@ -224,7 +224,7 @@ caddy run --config caddy.json
 		fmt.Printf("   - %s\n", dir)
 	}
 	fmt.Printf("\n🚀 You can now start adding domains!\n")
-	fmt.Printf("   hosts-cli domains add -d example.com -u localhost:3000\n")
+	fmt.Printf("   hosts domains add -d example.com -u localhost:3000\n")
 }
 
 func addDomain(cmd *cobra.Command, args []string) {
@@ -418,7 +418,7 @@ func listDomains(cmd *cobra.Command, args []string) {
 
 	if domainCount == 0 {
 		fmt.Printf("No domains configured yet.\n")
-		fmt.Printf("\nUse 'hosts-cli domains add -d example.com -u localhost:3000' to add your first domain.\n")
+		fmt.Printf("\nUse 'hosts domains add -d example.com -u localhost:3000' to add your first domain.\n")
 	} else {
 		fmt.Printf("\nTotal: %d domain(s)\n", domainCount)
 		fmt.Printf("📁 Config directory: %s\n", configDir)
@@ -618,7 +618,7 @@ func displayContainerInfo(cli *client.Client, container container.Summary) {
 		if strings.Contains(ports[0], ":") {
 			firstPort = strings.Split(ports[0], ":")[1]
 		}
-		fmt.Printf("   💡 Expose example: hosts-cli domains docker expose -d %s.local -c %s -p %s\n",
+		fmt.Printf("   💡 Expose example: hosts domains docker expose -d %s.local -c %s -p %s\n",
 			name, name, firstPort)
 	}
 	fmt.Println()

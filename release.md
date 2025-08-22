@@ -3,11 +3,11 @@
 
 ## Summary
 
-This is the first major release of the hosts-cli tool, a powerful command-line interface and web UI for managing your system's hosts file. This release includes a wide range of features to simplify the process of adding, removing, and managing hosts file entries, as well as integrating with the Caddy web server for local HTTPS proxying.
+This is the first major release of the hosts tool, a powerful command-line interface and web UI for managing your system's hosts file. This release includes a wide range of features to simplify the process of adding, removing, and managing hosts file entries, as well as integrating with the Caddy web server for local HTTPS proxying.
 
 ## Features
 
-*   **Web UI:** A user-friendly web interface for managing hosts file entries, available at `http://localhost:3000`.
+*   **Web UI:** A user-friendly web interface for managing hosts file entries, available at `http://localhost:3010`.
 *   **CLI:** A comprehensive command-line interface for all operations, including adding, removing, enabling, disabling, and listing hosts file entries.
 *   **Backup and Restore:** Easily create and restore backups of your hosts file to prevent data loss.
 *   **Caddy Integration:** Automatically generate Caddyfiles for local HTTPS proxying, making it simple to set up secure local development environments.
@@ -24,35 +24,35 @@ This is the first major release of the hosts-cli tool, a powerful command-line i
 
 ## Installation
 
-To install the hosts-cli tool, you can either download the latest release from the releases page or build it from source.
+To install the hosts tool, you can either download the latest release from the releases page or build it from source.
 
 ### From Release
 
-1.  Download the latest release from the [releases page](https://github.com/levi-opunga/hosts-cli/releases).
+1.  Download the latest release from the [releases page](https://github.com/levi-opunga/hosts/releases).
 2.  Place the executable in a directory in your PATH.
 
 ### From Source
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/levi-opunga/hosts-cli.git
-    cd hosts-cli
+    git clone https://github.com/levi-opunga/hosts.git
+    cd hosts
     ```
 
 2.  Build the executable:
     ```bash
-    go build -o hosts-cli
+    go build -o hosts
     ```
 
 3.  Move the executable to a directory in your PATH (optional):
     ```bash
-    sudo mv hosts-cli /usr/local/bin/
+    sudo mv hosts /usr/local/bin/
     ```
 
 ## What's Next
 
-We are constantly working to improve the hosts-cli tool. Future releases will include features such as:
+We are constantly working to improve the hosts tool. Future releases will include features such as:
 
 *   A more advanced Caddy integration
 
-We hope you enjoy using the hosts-cli tool!
+We hope you enjoy using the hosts tool!
