@@ -52,19 +52,19 @@ The CLI provides a comprehensive set of commands for managing your hosts file.
 **Add a host:**
 
 ```shell
-./hosts --add example.local
+./hosts add example.local
 ```
 
 **Remove a host:**
 
 ```shell
-./hosts --remove example.local
+./hosts remove example.local
 ```
 
 **List all hosts:**
 
 ```shell
-./hosts --list
+./hosts list
 ```
 
 For more commands and options, see the [documentation](docs.md).
