@@ -1,0 +1,6 @@
+{
+  "domain": "example.com",
+  "type": "proxy",
+  "upstream": "localhost:3000",
+  "enable_https": true
+}

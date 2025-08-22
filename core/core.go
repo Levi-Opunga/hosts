@@ -366,9 +366,9 @@ func CliAddEntry(hostname, ip, comment string) error {
 	if !CheckRootPrivileges() {
 		fmt.Println("You need to escalate privileges to add a new entry.")
 		// prompt user to escalate privileges
-		var escalatePrivileges = YesNoPrompt("Do you want to escalate privileges now? (y/n)")
+		var escalatePrivileges = YesNoPrompt("Do you want to escalate privileges now? (y/n) ")
 		if escalatePrivileges {
-			cmd := exec.Command("sudo", os.Args[0], "--add", hostname, "--ip", ip, "--comment", comment)
+			cmd := exec.Command("sudo", os.Args[0], "add", hostname, "--ip", ip, "--comment", comment)
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
@@ -441,6 +441,23 @@ func CliAddEntry(hostname, ip, comment string) error {
 }
 
 func CliRemoveEntry(hostname string) error {
+	if !CheckRootPrivileges() {
+		fmt.Println("You need to escalate privileges to add a new entry.")
+		// prompt user to escalate privileges
+		var escalatePrivileges = YesNoPrompt("Do you want to escalate privileges now? (y/n) ")
+		if escalatePrivileges {
+			cmd := exec.Command("sudo", os.Args[0], "remove", hostname)
+			err := cmd.Run()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			return nil
+		} else {
+			fmt.Println("Exiting...")
+			os.Exit(1)
+		}
+	}
 	entries, err := ReadHosts()
 	if err != nil {
 		return fmt.Errorf("failed to read hosts: %w", err)

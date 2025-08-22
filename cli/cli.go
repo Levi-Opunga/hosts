@@ -5,6 +5,7 @@ import (
 	"hosts-cli/caddystarter"
 	"hosts-cli/core"
 	"hosts-cli/data"
+	"hosts-cli/domains"
 	"log"
 	"os"
 	"regexp"
@@ -65,6 +66,7 @@ func (r Runner) Execute(args []string) int {
 		r.newInitCmd(),
 		r.newVersionCmd(),
 		r.newCheckCmd(),
+		domains.Manager(),
 	)
 
 	// Supply args
