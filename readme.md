@@ -1,4 +1,4 @@
-# `hosts`
+# hosts
 A modern CLI tool to manage your `/etc/hosts` file with ease. It provides a web UI and CLI for managing hosts, with features like backup, validation, and Caddyfile generation.
 
 For detailed documentation, please see the [docs.md](docs.md) file.
